@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Text Preview</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {{ css }}
+    {{ js }}
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/marked.min.js"></script>
+    <script src="/static/js/highlight.min.js"></script>
+    <script type="text/javascript">
+     $(function() {
+         marked.setOptions({
+             highlight: function(code) {
+                 return hljs.highlightAuto(code).value;
+             }
+         })
+         var ws = new WebSocket('ws://{{ websocket }}');
+         ws.onopen = function () {
+             ws.send("I'm connected");
+         };
+         ws.onclose = function (event) {
+             window.open('', '_self', '');
+             window.close();
+         };
+         ws.onmessage = function (event) {
+             if (event.data.endsWith("<!-- iframe -->")) {
+                 var iframe = document.createElement("iframe");
+                 iframe.style.width = "100%";
+                 iframe.style.height = "100%";
+                 iframe.style.position = "absolute";
+                 iframe.style.border = "none";
+                 $("#preview").html(iframe)
+
+                 var frameDoc = iframe.document;
+                 if(iframe.contentWindow) {
+                     frameDoc = iframe.contentWindow.document; // IE
+                 }
+                 frameDoc.open();
+                 frameDoc.writeln(event.data);
+                 frameDoc.close();
+             }else {
+                 $("#preview").html(marked(event.data))
+             }
+             var scroll = $(document).height() * ($("#position-percentage").html() / 100);
+             $("html, body").animate({ scrollTop: scroll }, 300);
+         };
+         ws.onerror = function (event) {
+             console.log(event);
+         };
+     });
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <div id="preview">Text Preview</div>
+    </div>
+  </body>
+</html>
