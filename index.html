@@ -40,11 +40,16 @@
                  frameDoc.open();
                  frameDoc.writeln(event.data);
                  frameDoc.close();
+
+                 /* var scroll = $("iframe").contents().height() * ($("iframe").contents().find("#position-percentage").html() / 100);
+                  * $("iframe").contents().scrollTop(scroll) */
+                 $("body").css("margin","0")
+                 $("body").css("padding","0")
              }else {
                  $("#preview").html(marked(event.data))
+                 var scroll = $(document).height() * ($("#position-percentage").html() / 100);
+                 $("html, body").animate({ scrollTop: scroll }, 300);
              }
-             var scroll = $(document).height() * ($("#position-percentage").html() / 100);
-             $("html, body").animate({ scrollTop: scroll }, 300);
          };
          ws.onerror = function (event) {
              console.log(event);

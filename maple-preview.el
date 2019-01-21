@@ -79,7 +79,7 @@
                          (concat
                           "<div id=\"position-percentage\" style=\"display:none;\">"
                           mark-position-percent
-                          "</div>"
+                          "</div>\n"
                           (maple-preview:text-content)))))
 
 (defun maple-preview:send-to-server ()
