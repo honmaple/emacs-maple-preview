@@ -9,6 +9,7 @@
     <script src="/static/js/jquery.min.js"></script>
     <script src="/static/js/marked.min.js"></script>
     <script src="/static/js/highlight.min.js"></script>
+    <script src="/static/js/mermaid.js"></script>
     <script type="text/javascript">
      $(function() {
          marked.setOptions({
@@ -46,7 +47,20 @@
                  $("body").css("margin","0")
                  $("body").css("padding","0")
              }else {
-                 $("#preview").html(marked(event.data))
+                 var renderer = new marked.Renderer()
+                 renderer.code = function (code, language) {
+                     if (language.match(/^mermaid/)) {
+                         mermaid.mermaidAPI.initialize({
+                             startOnLoad:true,
+                         });
+                         var graph = mermaid.mermaidAPI.render('graph', code);
+                         return '<div>' + graph + '</div>';
+                     } else {
+                         return '<pre><code>' + code + '</code></pre>';
+                     }
+                 };
+
+                 $("#preview").html(marked(event.data, {renderer: renderer}))
                  var scroll = $(document).height() * ($("#position-percentage").html() / 100);
                  $("html, body").animate({ scrollTop: scroll }, 300);
              }
