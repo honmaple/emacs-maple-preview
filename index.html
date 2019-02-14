@@ -12,11 +12,22 @@
     <script src="/static/js/mermaid.js"></script>
     <script type="text/javascript">
      $(function() {
+         var renderer = new marked.Renderer()
+         renderer.defaultCode = renderer.code
+         renderer.code = function (code, language, escaped) {
+             if ((language || "").match(/^mermaid/)) {
+                 return '<div class="mermaid">' + code + '</div>';
+             }
+             return this.defaultCode(code, language, escaped)
+         };
+
          marked.setOptions({
+             renderer: renderer,
              highlight: function(code) {
                  return hljs.highlightAuto(code).value;
              }
          })
+
          var ws = new WebSocket('ws://{{ websocket }}');
          ws.onopen = function () {
              ws.send("I'm connected");
@@ -47,20 +58,8 @@
                  $("body").css("margin","0")
                  $("body").css("padding","0")
              }else {
-                 var renderer = new marked.Renderer()
-                 renderer.code = function (code, language) {
-                     if (language.match(/^mermaid/)) {
-                         mermaid.mermaidAPI.initialize({
-                             startOnLoad:true,
-                         });
-                         var graph = mermaid.mermaidAPI.render('graph', code);
-                         return '<div>' + graph + '</div>';
-                     } else {
-                         return '<pre><code>' + code + '</code></pre>';
-                     }
-                 };
-
-                 $("#preview").html(marked(event.data, {renderer: renderer}))
+                 $("#preview").html(marked(event.data))
+                 mermaid.init();
                  var scroll = $(document).height() * ($("#position-percentage").html() / 100);
                  $("html, body").animate({ scrollTop: scroll }, 300);
              }
