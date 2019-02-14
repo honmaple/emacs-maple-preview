@@ -12,10 +12,14 @@
     <script src="/static/js/mermaid.js"></script>
     <script type="text/javascript">
      $(function() {
+         var extension = {
+             mermaid: false
+         }
          var renderer = new marked.Renderer()
          renderer.defaultCode = renderer.code
          renderer.code = function (code, language, escaped) {
              if ((language || "").match(/^mermaid/)) {
+                 extension.mermaid = true;
                  return '<div class="mermaid">' + code + '</div>';
              }
              return this.defaultCode(code, language, escaped)
@@ -59,7 +63,9 @@
                  $("body").css("padding","0")
              }else {
                  $("#preview").html(marked(event.data))
-                 mermaid.init();
+                 if (extension.mermaid) {
+                     mermaid.init();
+                 }
                  var scroll = $(document).height() * ($("#position-percentage").html() / 100);
                  $("html, body").animate({ scrollTop: scroll }, 300);
              }

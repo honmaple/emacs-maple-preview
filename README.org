@@ -1,0 +1,27 @@
+* emacs-maple-preview
+  markdown, org-mode or html realtime preview on Emacs
+
+** screenshot
+   [[https://github.com/honmaple/emacs-maple-preview/blob/master/screenshot/preview.gif]]
+   
+** quickstart
+   #+begin_src elisp
+     (use-package maple-preview
+       :ensure nil
+       :commands (maple-preview-mode))
+   #+end_src
+
+** customize
+   #+begin_src elisp
+     ;; Preview http host.
+     (setq maple-preview:host "localhost")
+     ;; Preview http port.
+     (setq maple-preview:port 8080)
+     ;; Preview websocket port.
+     (setq maple-preview:websocket-port 8081)
+     ;; Auto open browser.
+     (setq maple-preview:browser-open t)
+     ;; Auto preview when insert.
+     (setq maple-preview:auto t)
+   #+end_src
+
