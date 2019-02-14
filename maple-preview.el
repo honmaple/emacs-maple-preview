@@ -54,6 +54,11 @@
   :type 'boolean
   :group 'maple-preview)
 
+(defcustom maple-preview:auto t
+  "Auto open browser."
+  :type 'boolean
+  :group 'maple-preview)
+
 (defvar maple-preview:http-server nil
   "`maple-preview' http server.")
 (defvar maple-preview:websocket-server nil
@@ -185,7 +190,8 @@
   (maple-preview:init-websocket)
   (maple-preview:init-http-server)
   (when maple-preview:browser-open (maple-preview:open-browser))
-  (add-hook 'post-self-insert-hook #'maple-preview:send-to-server)
+  (when maple-preview:auto
+    (add-hook 'post-self-insert-hook #'maple-preview:send-to-server))
   (add-hook 'after-save-hook #'maple-preview:send-to-server))
 
 (defun maple-preview:finalize ()

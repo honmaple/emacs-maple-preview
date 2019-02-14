@@ -9,13 +9,25 @@
     <script src="/static/js/jquery.min.js"></script>
     <script src="/static/js/marked.min.js"></script>
     <script src="/static/js/highlight.min.js"></script>
+    <script src="/static/js/mermaid.js"></script>
     <script type="text/javascript">
      $(function() {
+         var renderer = new marked.Renderer()
+         renderer.defaultCode = renderer.code
+         renderer.code = function (code, language, escaped) {
+             if ((language || "").match(/^mermaid/)) {
+                 return '<div class="mermaid">' + code + '</div>';
+             }
+             return this.defaultCode(code, language, escaped)
+         };
+
          marked.setOptions({
+             renderer: renderer,
              highlight: function(code) {
                  return hljs.highlightAuto(code).value;
              }
          })
+
          var ws = new WebSocket('ws://{{ websocket }}');
          ws.onopen = function () {
              ws.send("I'm connected");
@@ -47,6 +59,7 @@
                  $("body").css("padding","0")
              }else {
                  $("#preview").html(marked(event.data))
+                 mermaid.init();
                  var scroll = $(document).height() * ($("#position-percentage").html() / 100);
                  $("html, body").animate({ scrollTop: scroll }, 300);
              }
