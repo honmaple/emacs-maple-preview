@@ -59,6 +59,26 @@
   :type 'boolean
   :group 'maple-preview)
 
+(defcustom maple-preview:auto-hook nil
+  "Hook for user specified auto preview instance.
+
+This hook run within the procedure of `maple-preview:init' when
+customized variable `maple-preview:auto' was non-nil.
+
+The internal auto-preview type transferred
+`maple-preview:send-to-server' to the `post-self-insert-hook',
+this hook providing more customization functional for as."
+  :type 'hook
+  :group 'maple-preview)
+
+
+(defcustom maple-preview:finialize-hook nil
+  "Hooks for run with `maple-preview:finalize', it's useful to
+  remove all dirty hacking with `maple-preview:auto-hook'."
+  :type 'hook
+  :group 'maple-preview)
+
+
 (defvar maple-preview:http-server nil
   "`maple-preview' http server.")
 (defvar maple-preview:websocket-server nil
@@ -90,8 +110,14 @@
 (defun maple-preview:send-to-server ()
   "Send the `maple-preview' preview to clients."
   (when (bound-and-true-p maple-preview-mode)
-    (if maple-preview:websocket (maple-preview:send-preview maple-preview:websocket)
-      (message "websocket server is not opened"))))
+    (when (and maple-preview:websocket
+               (buffer-file-name))
+      (when (condition-case nil
+                (string-match-p
+                 "\\([oO][rR][gG]\\|[mM][dD]\\|markdown\\)"
+                 (file-name-extension (buffer-file-name)))
+              (error nil))
+        (maple-preview:send-preview maple-preview:websocket)))))
 
 (defun maple-preview:css-template ()
   "Css Template."
@@ -155,7 +181,9 @@
            :on-error (lambda (_websocket _type _err)
                        (message "error connecting"))
            :on-close (lambda (_websocket)
-                       (message "close connecting"))))))
+                       (maple-preview:finalize)
+                       (setq maple-preview-mode nil)
+                       (message "Close maple-preview connects"))))))
 
 (defun maple-preview:init-http-server ()
   "Start http server at PORT to serve preview file via http."
@@ -191,7 +219,8 @@
   (maple-preview:init-http-server)
   (when maple-preview:browser-open (maple-preview:open-browser))
   (when maple-preview:auto
-    (add-hook 'post-self-insert-hook #'maple-preview:send-to-server))
+    (add-hook 'post-self-insert-hook #'maple-preview:send-to-server)
+    (run-hooks 'maple-preview:auto-hook))
   (add-hook 'after-save-hook #'maple-preview:send-to-server))
 
 (defun maple-preview:finalize ()
