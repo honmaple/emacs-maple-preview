@@ -108,7 +108,7 @@ this hook providing more customization functional for as."
                           "</div>\n"
                           (maple-preview:text-content)))))
 
-(defun maple-preview:send-to-server ()
+(defun maple-preview:send-to-server (&rest _args)
   "Send the `maple-preview' preview to clients."
   (when (bound-and-true-p maple-preview-mode)
     (when (and maple-preview:websocket
@@ -240,6 +240,51 @@ this hook providing more customization functional for as."
     (setq maple-preview:http-server nil))
   (remove-hook 'post-self-insert-hook 'maple-preview:send-to-server)
   (remove-hook 'after-save-hook 'maple-preview:send-to-server))
+
+
+
+;; Internal default hook set
+
+(defun maple-preview:schema-auto-hooks ()
+  (dolist ($el '(windmove-left
+                 windmove-right
+                 windmove-up
+                 windmove-down))
+    (advice-add $el :after #'maple-preview:send-to-server))
+  (when (featurep 'eyebrowse)
+    (with-eval-after-load 'eyebrowse
+      (advice-add 'eyebrowse-switch-to-window-config
+                  :after
+                  #'maple-preview:send-to-server)))
+  (advice-add 'other-window :after #'maple-preview:send-to-server)
+  (when (featurep 'markdown-mode)
+    (with-eval-after-load 'markdown-mode
+      (advice-add 'markdown-outdent-or-delete
+                  :after
+                  #'maple-preview:send-to-server)))
+  (advice-add 'backward-delete-char-untabify
+              :after #'maple-preview:send-to-server))
+
+(defun maple-preview:schema-finialize-hooks ()
+  (dolist ($el '(windmove-left
+                 windmove-right
+                 windmove-up
+                 windmove-down))
+    (advice-remove $el #'maple-previewer-send-advice))
+  (when (and (featurep 'eyebrowse)
+             (fboundp 'eyebrowse-switch-to-window-config))
+    (advice-remove 'eyebrowse-switch-to-window-config
+                   #'maple-preview:send-to-server))
+  (addvice-remove 'other-window #'maple-preview:send-to-server)
+  (when (and (featurep 'markdown-mode)
+             (fboundp 'markdown-outdent-or-delete))
+    (advice-remove 'markdown-outdent-or-delete
+                #'maple-preview:send-to-server))
+  (advice-remove 'backward-delete-char-untabify
+                 #'maple-preview:send-to-server))
+
+(add-hook 'maple-preview:auto-hook #'maple-preview:schema-auto-hooks)
+(add-hook 'maple-preview:finialize-hook #'maple-preview:schema-finialize-hooks)
 
 ;;;###autoload
 (defun maple-preview-cleanup ()
