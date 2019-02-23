@@ -100,6 +100,7 @@ this hook providing more customization functional for as."
               (/
                (float (-  (line-number-at-pos) (/ (count-screen-lines (window-start) (point)) 2)))
                (count-lines (point-min) (point-max))))))))
+    (setq httpd-root default-directory)
     (websocket-send-text websocket
                          (concat
                           "<div id=\"position-percentage\" style=\"display:none;\">"
