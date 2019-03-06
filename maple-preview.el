@@ -3,7 +3,10 @@
 ;; Copyright (C) 2015-2019 lin.jiang
 
 ;; Author: lin.jiang <mail@honmaple.com>
+;; Version: 0.1.0
+;; Package-Requires: ((emacs "25.1") (simple-httpd "1.5.1") (websocket "1.9"))
 ;; URL: https://github.com/honmaple/dotfiles/tree/master/emacs.d
+
 
 ;; This file is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -34,6 +37,11 @@
   :group 'text
   :prefix "maple-preview:")
 
+(defcustom maple-preview:allow-modes '(org-mode markdown-mode html-mode web-mode)
+  "Allow preview modes."
+  :type 'list
+  :group 'maple-preview)
+
 (defcustom maple-preview:host "localhost"
   "Preview http host."
   :type 'string
@@ -59,6 +67,24 @@
   :type 'boolean
   :group 'maple-preview)
 
+(defcustom maple-preview:auto-hook nil
+  "Hook for user specified auto preview instance.
+
+This hook run within the procedure of `maple-preview:init' when
+customized variable `maple-preview:auto' was non-nil.
+
+The internal auto-preview type transferred
+`maple-preview:send-to-server' to the `post-self-insert-hook',
+this hook providing more customization functional for as."
+  :type 'hook
+  :group 'maple-preview)
+
+(defcustom maple-preview:finialize-hook nil
+  "Hooks for run with `maple-preview:finalize'.
+It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
+  :type 'hook
+  :group 'maple-preview)
+
 (defvar maple-preview:http-server nil
   "`maple-preview' http server.")
 (defvar maple-preview:websocket-server nil
@@ -70,7 +96,6 @@
 (defvar maple-preview:css-file '("/static/css/markdown.css"))
 (defvar maple-preview:js-file nil)
 
-
 (defun maple-preview:send-preview (websocket)
   "Send file content to `WEBSOCKET`."
   (let ((mark-position-percent
@@ -80,6 +105,7 @@
               (/
                (float (-  (line-number-at-pos) (/ (count-screen-lines (window-start) (point)) 2)))
                (count-lines (point-min) (point-max))))))))
+    (setq httpd-root default-directory)
     (websocket-send-text websocket
                          (concat
                           "<div id=\"position-percentage\" style=\"display:none;\">"
@@ -87,11 +113,11 @@
                           "</div>\n"
                           (maple-preview:text-content)))))
 
-(defun maple-preview:send-to-server ()
+(defun maple-preview:send-to-server (&rest _args)
   "Send the `maple-preview' preview to clients."
-  (when (bound-and-true-p maple-preview-mode)
-    (if maple-preview:websocket (maple-preview:send-preview maple-preview:websocket)
-      (message "websocket server is not opened"))))
+  (when (and (bound-and-true-p maple-preview-mode)
+             (member major-mode maple-preview:allow-modes))
+    (maple-preview:send-preview maple-preview:websocket)))
 
 (defun maple-preview:css-template ()
   "Css Template."
@@ -153,9 +179,9 @@
                       (setq maple-preview:websocket ws)
                       (message "websocket: I'm opened."))
            :on-error (lambda (_websocket _type _err)
-                       (message "error connecting"))
+                       (message "websocket: error connecting"))
            :on-close (lambda (_websocket)
-                       (message "close connecting"))))))
+                       (message "websocket: I'm closed."))))))
 
 (defun maple-preview:init-http-server ()
   "Start http server at PORT to serve preview file via http."
@@ -191,7 +217,8 @@
   (maple-preview:init-http-server)
   (when maple-preview:browser-open (maple-preview:open-browser))
   (when maple-preview:auto
-    (add-hook 'post-self-insert-hook #'maple-preview:send-to-server))
+    (add-hook 'post-self-insert-hook #'maple-preview:send-to-server)
+    (run-hooks 'maple-preview:auto-hook))
   (add-hook 'after-save-hook #'maple-preview:send-to-server))
 
 (defun maple-preview:finalize ()
@@ -215,7 +242,8 @@
 (defun maple-preview-cleanup ()
   "Cleanup `maple-preview' mode."
   (interactive)
-  (maple-preview:finalize))
+  (maple-preview:finalize)
+  (run-hooks 'maple-preview:finialize-hook))
 
 ;;;###autoload
 (define-minor-mode maple-preview-mode
