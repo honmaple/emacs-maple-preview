@@ -3,7 +3,10 @@
 ;; Copyright (C) 2015-2019 lin.jiang
 
 ;; Author: lin.jiang <mail@honmaple.com>
+;; Version: 0.1.0
+;; Package-Requires: ((emacs "25.1") (simple-httpd "1.5.1") (websocket "1.9"))
 ;; URL: https://github.com/honmaple/dotfiles/tree/master/emacs.d
+
 
 ;; This file is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -33,6 +36,11 @@
   "Realtime Preview"
   :group 'text
   :prefix "maple-preview:")
+
+(defcustom maple-preview:allow-modes '(org-mode markdown-mode html-mode web-mode)
+  "Allow preview modes."
+  :type 'list
+  :group 'maple-preview)
 
 (defcustom maple-preview:host "localhost"
   "Preview http host."
@@ -71,13 +79,11 @@ this hook providing more customization functional for as."
   :type 'hook
   :group 'maple-preview)
 
-
 (defcustom maple-preview:finialize-hook nil
-  "Hooks for run with `maple-preview:finalize', it's useful to
-  remove all dirty hacking with `maple-preview:auto-hook'."
+  "Hooks for run with `maple-preview:finalize'.
+It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
   :type 'hook
   :group 'maple-preview)
-
 
 (defvar maple-preview:http-server nil
   "`maple-preview' http server.")
@@ -89,7 +95,6 @@ this hook providing more customization functional for as."
 (defvar maple-preview:preview-file (concat maple-preview:home-path "index.html"))
 (defvar maple-preview:css-file '("/static/css/markdown.css"))
 (defvar maple-preview:js-file nil)
-
 
 (defun maple-preview:send-preview (websocket)
   "Send file content to `WEBSOCKET`."
@@ -110,15 +115,9 @@ this hook providing more customization functional for as."
 
 (defun maple-preview:send-to-server (&rest _args)
   "Send the `maple-preview' preview to clients."
-  (when (bound-and-true-p maple-preview-mode)
-    (when (and maple-preview:websocket
-               (buffer-file-name))
-      (when (condition-case nil
-                (string-match-p
-                 "\\([oO][rR][gG]\\|[mM][dD]\\|markdown\\)"
-                 (file-name-extension (buffer-file-name)))
-              (error nil))
-        (maple-preview:send-preview maple-preview:websocket)))))
+  (when (and (bound-and-true-p maple-preview-mode)
+             (member major-mode maple-preview:allow-modes))
+    (maple-preview:send-preview maple-preview:websocket)))
 
 (defun maple-preview:css-template ()
   "Css Template."
@@ -180,11 +179,9 @@ this hook providing more customization functional for as."
                       (setq maple-preview:websocket ws)
                       (message "websocket: I'm opened."))
            :on-error (lambda (_websocket _type _err)
-                       (message "error connecting"))
+                       (message "websocket: error connecting"))
            :on-close (lambda (_websocket)
-                       (maple-preview:finalize)
-                       (setq maple-preview-mode nil)
-                       (message "Close maple-preview connects"))))))
+                       (message "websocket: I'm closed."))))))
 
 (defun maple-preview:init-http-server ()
   "Start http server at PORT to serve preview file via http."
@@ -241,56 +238,12 @@ this hook providing more customization functional for as."
   (remove-hook 'post-self-insert-hook 'maple-preview:send-to-server)
   (remove-hook 'after-save-hook 'maple-preview:send-to-server))
 
-
-
-;; Internal default hook set
-
-(defun maple-preview:schema-auto-hooks ()
-  (dolist ($el '(windmove-left
-                 windmove-right
-                 windmove-up
-                 windmove-down))
-    (advice-add $el :after #'maple-preview:send-to-server))
-  (when (featurep 'eyebrowse)
-    (with-eval-after-load 'eyebrowse
-      (advice-add 'eyebrowse-switch-to-window-config
-                  :after
-                  #'maple-preview:send-to-server)))
-  (advice-add 'other-window :after #'maple-preview:send-to-server)
-  (when (featurep 'markdown-mode)
-    (with-eval-after-load 'markdown-mode
-      (advice-add 'markdown-outdent-or-delete
-                  :after
-                  #'maple-preview:send-to-server)))
-  (advice-add 'backward-delete-char-untabify
-              :after #'maple-preview:send-to-server))
-
-(defun maple-preview:schema-finialize-hooks ()
-  (dolist ($el '(windmove-left
-                 windmove-right
-                 windmove-up
-                 windmove-down))
-    (advice-remove $el #'maple-previewer-send-advice))
-  (when (and (featurep 'eyebrowse)
-             (fboundp 'eyebrowse-switch-to-window-config))
-    (advice-remove 'eyebrowse-switch-to-window-config
-                   #'maple-preview:send-to-server))
-  (addvice-remove 'other-window #'maple-preview:send-to-server)
-  (when (and (featurep 'markdown-mode)
-             (fboundp 'markdown-outdent-or-delete))
-    (advice-remove 'markdown-outdent-or-delete
-                #'maple-preview:send-to-server))
-  (advice-remove 'backward-delete-char-untabify
-                 #'maple-preview:send-to-server))
-
-(add-hook 'maple-preview:auto-hook #'maple-preview:schema-auto-hooks)
-(add-hook 'maple-preview:finialize-hook #'maple-preview:schema-finialize-hooks)
-
 ;;;###autoload
 (defun maple-preview-cleanup ()
   "Cleanup `maple-preview' mode."
   (interactive)
-  (maple-preview:finalize))
+  (maple-preview:finalize)
+  (run-hooks 'maple-preview:finialize-hook))
 
 ;;;###autoload
 (define-minor-mode maple-preview-mode
