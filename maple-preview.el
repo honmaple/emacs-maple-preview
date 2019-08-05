@@ -96,6 +96,17 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
 (defvar maple-preview:css-file '("/static/css/markdown.css"))
 (defvar maple-preview:js-file nil)
 
+(defvar maple-preview:no-refresh nil)
+(make-local-variable 'maple-preview:no-refresh)
+
+(defun maple-preview:minibuffer-setup-hook (&rest _args)
+  "disable auto refresh when exit minibuffer"
+  (setq maple-preview:no-refresh t))
+
+(defun maple-preview:minibuffer-exit-hook (&rest _args)
+  "enable auto refresh when exit minibuffer"
+  (setq maple-preview:no-refresh nil))
+
 (defun maple-preview:send-preview (websocket)
   "Send file content to `WEBSOCKET`."
   (let ((mark-position-percent
@@ -116,7 +127,8 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
 (defun maple-preview:send-to-server (&rest _args)
   "Send the `maple-preview' preview to clients."
   (when (and (bound-and-true-p maple-preview-mode)
-             (member major-mode maple-preview:allow-modes))
+             (member major-mode maple-preview:allow-modes)
+			 (not maple-preview:no-refresh))
     (maple-preview:send-preview maple-preview:websocket)))
 
 (defun maple-preview:css-template ()
@@ -218,6 +230,8 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
   (when maple-preview:browser-open (maple-preview:open-browser))
   (when maple-preview:auto
     (add-hook 'post-self-insert-hook #'maple-preview:send-to-server)
+	(add-hook 'minibuffer-setup-hook #'maple-preview:minibuffer-setup-hook)
+	(add-hook 'minibuffer-exit-hook #'maple-preview:minibuffer-exit-hook)
     (run-hooks 'maple-preview:auto-hook))
   (add-hook 'after-save-hook #'maple-preview:send-to-server))
 
@@ -236,6 +250,8 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
         (delete-process i)))
     (setq maple-preview:http-server nil))
   (remove-hook 'post-self-insert-hook 'maple-preview:send-to-server)
+  (remove-hook 'minibuffer-setup-hook #'maple-preview:minibuffer-setup-hook)
+  (remove-hook 'minibuffer-exit-hook #'maple-preview:minibuffer-exit-hook)
   (remove-hook 'after-save-hook 'maple-preview:send-to-server))
 
 ;;;###autoload
