@@ -113,11 +113,11 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
                           "</div>\n"
                           (maple-preview:text-content)))))
 
-(defun maple-preview:send-to-server (&rest _args)
-  "Send the `maple-preview' preview to clients."
+(defun maple-preview:send-to-server (&optional ws)
+  "Send the `maple-preview' preview to WS clients."
   (when (and (bound-and-true-p maple-preview-mode)
              (member major-mode maple-preview:allow-modes))
-    (maple-preview:send-preview maple-preview:websocket)))
+    (maple-preview:send-preview (or ws maple-preview:websocket))))
 
 (defun maple-preview:css-template ()
   "Css Template."
@@ -174,7 +174,7 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
            maple-preview:websocket-port
            :host maple-preview:host
            :on-message (lambda (ws _frame)
-                         (maple-preview:send-preview ws))
+                         (maple-preview:send-to-server ws))
            :on-open (lambda (ws)
                       (setq maple-preview:websocket ws)
                       (message "websocket: I'm opened."))
