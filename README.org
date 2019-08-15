@@ -7,12 +7,25 @@
 ** quickstart
    #+begin_src elisp
      (use-package maple-preview
+       :quelpa (:fetcher github :repo "honmaple/emacs-maple-preview" :files ("*.el" "index.html" "static"))
+       :commands (maple-preview-mode))
+   #+end_src
+
+   Or alternatively, you can download the repository and install manually by doing:
+   #+BEGIN_SRC sehll
+   git clone https://github.com/honmaple/emacs-maple-preview ~/.emacs.d/site-lisp/maple-preview
+   #+END_SRC
+
+   #+begin_src elisp
+     (use-package maple-preview
        :ensure nil
        :commands (maple-preview-mode))
    #+end_src
 
 ** customize
    #+begin_src elisp
+     ;; only enable preview within some special modes
+     (setq maple-preview:allow-modes '(org-mode markdown-mode html-mode web-mode))
      ;; Preview http host.
      (setq maple-preview:host "localhost")
      ;; Preview http port.
