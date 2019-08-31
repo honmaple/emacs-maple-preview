@@ -62,9 +62,34 @@
   :type 'boolean
   :group 'maple-preview)
 
-(defcustom maple-preview:auto t
-  "Auto open browser."
+(defcustom maple-preview:auto-update t
+  "Auto update when preview."
   :type 'boolean
+  :group 'maple-preview)
+
+(defcustom maple-preview:auto-scroll t
+  "Auto scroll when preview."
+  :type 'boolean
+  :group 'maple-preview)
+
+(defcustom maple-preview:text-content '((t . maple-preview:markdown-content))
+  "How to preview text, export to markdown or html."
+  :type 'cons
+  :group 'maple-preview)
+
+(defcustom maple-preview:css-file
+  '("/static/css/markdown.css")
+  "Custom preview css style."
+  :type 'list
+  :group 'maple-preview)
+
+(defcustom maple-preview:js-file
+  '("/static/js/jquery.min.js"
+    "/static/js/marked.min.js"
+    "/static/js/highlight.min.js"
+    "/static/js/mermaid.js")
+  "Custom preview js script."
+  :type 'list
   :group 'maple-preview)
 
 (defcustom maple-preview:auto-hook nil
@@ -93,25 +118,24 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
 
 (defvar maple-preview:home-path (file-name-directory load-file-name))
 (defvar maple-preview:preview-file (concat maple-preview:home-path "index.html"))
-(defvar maple-preview:css-file '("/static/css/markdown.css"))
-(defvar maple-preview:js-file nil)
+
+(defun maple-preview:position-percent ()
+  "Preview position percent."
+  (when maple-preview:auto-scroll
+    (format
+     "<div id=\"position-percentage\" style=\"display:none;\">%s</div>\n"
+     (number-to-string
+      (truncate (* 100 (/ (float (-  (line-number-at-pos) (/ (count-screen-lines (window-start) (point)) 2)))
+                          (count-lines (point-min) (point-max)))))))))
 
 (defun maple-preview:send-preview (websocket)
   "Send file content to `WEBSOCKET`."
-  (let ((mark-position-percent
-         (number-to-string
-          (truncate
-           (* 100
-              (/
-               (float (-  (line-number-at-pos) (/ (count-screen-lines (window-start) (point)) 2)))
-               (count-lines (point-min) (point-max))))))))
+  (let ((text-content-func (cdr (assoc major-mode maple-preview:text-content))))
     (setq httpd-root default-directory)
-    (websocket-send-text websocket
-                         (concat
-                          "<div id=\"position-percentage\" style=\"display:none;\">"
-                          mark-position-percent
-                          "</div>\n"
-                          (maple-preview:text-content)))))
+    (unless text-content-func
+      (setq text-content-func (cdr (assoc t maple-preview:text-content))))
+    (websocket-send-text
+     websocket (concat (maple-preview:position-percent) (funcall text-content-func)))))
 
 (defun maple-preview:send-to-server (&optional ws)
   "Send the `maple-preview' preview to WS clients."
@@ -151,19 +175,33 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
                      t))
     (buffer-string)))
 
-(defun maple-preview:text-content ()
-  "Get file content."
+(defun maple-preview:html-content ()
+  "Get file html content."
+  (let ((file-name buffer-file-truename))
+    (concat (cond ((memq major-mode '(org-mode markdown-mode))
+                   (require 'ox-html)
+                   (let ((content (org-export-as 'html)))
+                     (with-temp-buffer
+                       (insert content)
+                       (buffer-string))))
+                  ((memq major-mode '(web-mode html-mode))
+                   (with-temp-buffer
+                     (insert-file-contents file-name)
+                     (buffer-string)))
+                  (t (buffer-substring-no-properties (point-min) (point-max))))
+            "<!-- iframe -->")))
+
+(defun maple-preview:markdown-content ()
+  "Get file markdown content."
   (let ((file-name buffer-file-truename))
     (cond ((eq major-mode 'org-mode)
            (require 'ox-md)
            (org-export-as 'md))
-          ((or (eq major-mode 'web-mode)
-               (eq major-mode 'html-mode))
-           (concat
-            (with-temp-buffer
-              (insert-file-contents file-name)
-              (buffer-string))
-            "<!-- iframe -->"))
+          ((memq major-mode '(web-mode html-mode))
+           (concat (with-temp-buffer
+                     (insert-file-contents file-name)
+                     (buffer-string))
+                   "<!-- iframe -->"))
           (t (buffer-substring-no-properties (point-min) (point-max))))))
 
 (defun maple-preview:init-websocket ()
@@ -216,7 +254,7 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
   (maple-preview:init-websocket)
   (maple-preview:init-http-server)
   (when maple-preview:browser-open (maple-preview:open-browser))
-  (when maple-preview:auto
+  (when maple-preview:auto-update
     (add-hook 'post-self-insert-hook #'maple-preview:send-to-server)
     (run-hooks 'maple-preview:auto-hook))
   (add-hook 'after-save-hook #'maple-preview:send-to-server))
@@ -251,9 +289,7 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
   :group      'maple-preview
   :init-value nil
   :global     t
-  (if maple-preview-mode
-      (maple-preview:init)
-    (maple-preview:finalize)))
+  (if maple-preview-mode (maple-preview:init) (maple-preview:finalize)))
 
 (provide 'maple-preview)
 ;;; maple-preview.el ends here

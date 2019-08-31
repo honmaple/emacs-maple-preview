@@ -26,6 +26,8 @@
    #+begin_src elisp
      ;; only enable preview within some special modes
      (setq maple-preview:allow-modes '(org-mode markdown-mode html-mode web-mode))
+     ;; How to preview text, export to markdown or html.
+     (setq maple-preview:text-content '((t . maple-preview:markdown-content)))
      ;; Preview http host.
      (setq maple-preview:host "localhost")
      ;; Preview http port.
@@ -35,6 +37,29 @@
      ;; Auto open browser.
      (setq maple-preview:browser-open t)
      ;; Auto preview when insert.
-     (setq maple-preview:auto t)
+     (setq maple-preview:auto-update t)
+     ;; Auto scroll when preview.
+     (setq maple-preview:auto-scroll t)
+     ;; custom css or js file
+     (add-to-list 'maple-preview:js-file "https://cdn.bootcss.com/mathjax/2.7.6/MathJax.js" t)
+     (add-to-list 'maple-preview:css-file
+                  "<style type=\"text/css\">
+                     body {
+                         max-width: 800px;
+                     }
+                   </style>" t)
    #+end_src
+
+* FAQ
+** How to preview Latex within org-mode?
+   #+begin_src elisp
+     (setq maple-preview:text-content '((org-mode . maple-preview:html-content)
+                                        (t . maple-preview:markdown-content)))
+   #+end_src
+   Then *maple-preview* will export org-mode as html with mathjax.js, if you want to custom beautiful css, use
+
+   #+begin_example
+     #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="custom.css" />
+   #+end_example
+
 
