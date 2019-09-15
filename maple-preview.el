@@ -5,7 +5,7 @@
 ;; Author: lin.jiang <mail@honmaple.com>
 ;; Version: 0.1.0
 ;; Package-Requires: ((emacs "25.1") (simple-httpd "1.5.1") (websocket "1.9"))
-;; URL: https://github.com/honmaple/dotfiles/tree/master/emacs.d
+;; URL: https://github.com/honmaple/emacs-maple-preview
 
 
 ;; This file is free software: you can redistribute it and/or modify
