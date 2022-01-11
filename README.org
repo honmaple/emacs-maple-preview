@@ -3,7 +3,7 @@
 
 ** screenshot
    [[https://github.com/honmaple/emacs-maple-preview/blob/master/screenshot/preview.gif]]
-   
+
 ** quickstart
    #+begin_src elisp
      (use-package maple-preview
@@ -62,4 +62,23 @@
      #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="custom.css" />
    #+end_example
 
+** How to preview mermaid within org-mode?
+   #+begin_src elisp
+     (defun maple/org-md-example-block (example-block _contents info)
+       (format "```%s\n%s\n```"
+               (org-element-property :language example-block)
+               (org-remove-indentation
+                (org-export-format-code-default example-block info))))
+     (advice-add 'org-md-example-block :override 'maple/org-md-example-block)
 
+   #+end_src
+
+   Then use src with mermaid flag
+   #+begin_src mermaid
+    graph TD
+    A[nginx]
+    B(log)
+    C(upstream)
+    A -->|write| B
+    A -->|send| C
+   #+end_src
