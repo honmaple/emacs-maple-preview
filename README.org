@@ -26,19 +26,17 @@
    #+begin_src elisp
      ;; only enable preview within some special modes
      (setq maple-preview:allow-modes '(org-mode markdown-mode html-mode web-mode))
-     ;; How to preview text, export to markdown or html.
+     ;; How to preview text, export to markdown or html
      (setq maple-preview:text-content '((t . maple-preview:markdown-content)))
-     ;; Preview http host.
+     ;; Preview http host
      (setq maple-preview:host "localhost")
-     ;; Preview http port.
-     (setq maple-preview:port 8080)
-     ;; Preview websocket port.
-     (setq maple-preview:websocket-port 8081)
-     ;; Auto open browser.
+     ;; Preview http port, t means use unused port
+     (setq maple-preview:port t)
+     ;; Auto open browser
      (setq maple-preview:browser-open t)
-     ;; Auto preview when insert.
+     ;; Auto preview when insert
      (setq maple-preview:auto-update t)
-     ;; Auto scroll when preview.
+     ;; Auto scroll when preview
      (setq maple-preview:auto-scroll t)
      ;; custom css or js file
      (add-to-list 'maple-preview:js-file "https://cdn.bootcss.com/mathjax/2.7.6/MathJax.js" t)
@@ -61,7 +59,6 @@
    #+begin_example
      #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="custom.css" />
    #+end_example
-
 ** How to preview mermaid within org-mode?
    #+begin_src elisp
      (defun maple/org-md-example-block (example-block _contents info)
@@ -74,6 +71,7 @@
    #+end_src
 
    Then use src with mermaid flag
+   #+begin_example
    #+begin_src mermaid
     graph TD
     A[nginx]
@@ -82,3 +80,4 @@
     A -->|write| B
     A -->|send| C
    #+end_src
+   #+end_example

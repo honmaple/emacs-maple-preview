@@ -3,8 +3,8 @@
 ;; Copyright (C) 2015-2019 lin.jiang
 
 ;; Author: lin.jiang <mail@honmaple.com>
-;; Version: 0.1.0
-;; Package-Requires: ((emacs "25.1") (simple-httpd "1.5.1") (websocket "1.9"))
+;; Version: 0.1.1
+;; Package-Requires: ((emacs "25.1") (web-server "0.1.2") (websocket "1.9"))
 ;; URL: https://github.com/honmaple/emacs-maple-preview
 
 
@@ -29,11 +29,13 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'web-server)
 (require 'websocket)
-(require 'simple-httpd)
+
+(declare-function org-export-as 'ox-html)
 
 (defgroup maple-preview nil
-  "Realtime Preview"
+  "Realtime Preview."
   :group 'text
   :prefix "maple-preview:")
 
@@ -42,18 +44,13 @@
   :type 'list
   :group 'maple-preview)
 
-(defcustom maple-preview:host "localhost"
+(defcustom maple-preview:host "127.0.0.1"
   "Preview http host."
   :type 'string
   :group 'maple-preview)
 
-(defcustom maple-preview:port 8080
-  "Preview http port."
-  :type 'integer
-  :group 'maple-preview)
-
-(defcustom maple-preview:websocket-port 8081
-  "Preview websocket port."
+(defcustom maple-preview:port t
+  "Preview http port, t means auto select unused port."
   :type 'integer
   :group 'maple-preview)
 
@@ -72,22 +69,23 @@
   :type 'boolean
   :group 'maple-preview)
 
-(defcustom maple-preview:text-content '((t . maple-preview:markdown-content))
+(defcustom maple-preview:text-content
+  '((t . maple-preview:markdown-content))
   "How to preview text, export to markdown or html."
   :type 'cons
   :group 'maple-preview)
 
 (defcustom maple-preview:css-file
-  '("/static/css/markdown.css")
+  '("/preview/static/css/markdown.css")
   "Custom preview css style."
   :type 'list
   :group 'maple-preview)
 
 (defcustom maple-preview:js-file
-  '("/static/js/jquery.min.js"
-    "/static/js/marked.min.js"
-    "/static/js/highlight.min.js"
-    "/static/js/mermaid.js")
+  '("/preview/static/js/jquery.min.js"
+    "/preview/static/js/marked.min.js"
+    "/preview/static/js/highlight.min.js"
+    "/preview/static/js/mermaid.js")
   "Custom preview js script."
   :type 'list
   :group 'maple-preview)
@@ -110,14 +108,19 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
   :type 'hook
   :group 'maple-preview)
 
-(defvar maple-preview:http-server nil
+(defvar maple-preview:server nil
   "`maple-preview' http server.")
-(defvar maple-preview:websocket-server nil
-  "`maple-preview' websocket server.")
 (defvar maple-preview:websocket nil)
 
 (defvar maple-preview:home-path (file-name-directory load-file-name))
-(defvar maple-preview:preview-file (concat maple-preview:home-path "index.html"))
+(defvar maple-preview:index-file (concat maple-preview:home-path "index.html"))
+
+(defun maple-preview:mime-type(path)
+  "Guess mime type from PATH."
+  (let ((mime (mm-default-file-type path)))
+    (if (and (not mime) (string-suffix-p ".js" path))
+        "application/javascript"
+      mime)))
 
 (defun maple-preview:position-percent ()
   "Preview position percent."
@@ -127,21 +130,6 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
      (number-to-string
       (truncate (* 100 (/ (float (-  (line-number-at-pos) (/ (count-screen-lines (window-start) (point)) 2)))
                           (count-lines (point-min) (point-max)))))))))
-
-(defun maple-preview:send-preview (websocket)
-  "Send file content to `WEBSOCKET`."
-  (let ((text-content-func (cdr (assoc major-mode maple-preview:text-content))))
-    (setq httpd-root default-directory)
-    (unless text-content-func
-      (setq text-content-func (cdr (assoc t maple-preview:text-content))))
-    (websocket-send-text
-     websocket (concat (maple-preview:position-percent) (funcall text-content-func)))))
-
-(defun maple-preview:send-to-server (&optional ws)
-  "Send the `maple-preview' preview to WS clients."
-  (when (and (bound-and-true-p maple-preview-mode)
-             (member major-mode maple-preview:allow-modes))
-    (maple-preview:send-preview (or ws maple-preview:websocket))))
 
 (defun maple-preview:css-template ()
   "Css Template."
@@ -159,20 +147,16 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
        (format "<script src=\"%s\"></script>" x)))
    maple-preview:js-file "\n"))
 
-(defun maple-preview:preview-template ()
+(defun maple-preview:template ()
   "Template."
   (with-temp-buffer
-    (insert-file-contents maple-preview:preview-file)
+    (insert-file-contents maple-preview:index-file)
     (when (search-forward "{{ css }}" nil t)
       (replace-match (maple-preview:css-template) t))
     (when (search-forward "{{ js }}" nil t)
       (replace-match (maple-preview:js-template) t))
     (when (search-forward "{{ websocket }}" nil t)
-      (replace-match (format
-                      "%s:%s"
-                      maple-preview:host
-                      maple-preview:websocket-port)
-                     t))
+      (replace-match (maple-preview:listen) t))
     (buffer-string)))
 
 (defun maple-preview:html-content ()
@@ -204,55 +188,75 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
                    "<!-- iframe -->"))
           (t (buffer-substring-no-properties (point-min) (point-max))))))
 
-(defun maple-preview:init-websocket ()
-  "Init websocket."
-  (when (not maple-preview:websocket-server)
-    (setq maple-preview:websocket-server
-          (websocket-server
-           maple-preview:websocket-port
-           :host maple-preview:host
-           :on-message (lambda (ws _frame)
-                         (maple-preview:send-to-server ws))
-           :on-open (lambda (ws)
-                      (setq maple-preview:websocket ws)
-                      (message "websocket: I'm opened."))
-           :on-error (lambda (_websocket _type _err)
-                       (message "websocket: error connecting"))
-           :on-close (lambda (_websocket)
-                       (message "websocket: I'm closed."))))))
+(defun maple-preview:send-to-server (&optional ws _string)
+  "Send STRING the `maple-preview' preview to WS clients."
+  (when (and (bound-and-true-p maple-preview-mode)
+             (member major-mode maple-preview:allow-modes))
+    (let ((text-content-func (cdr (assoc major-mode maple-preview:text-content))))
+      (unless text-content-func
+        (setq text-content-func (cdr (assoc t maple-preview:text-content))))
+      (process-send-string (or ws maple-preview:websocket)
+                           (maple-preview:websocket-text
+                            (concat (maple-preview:position-percent) (funcall text-content-func)))))))
 
-(defun maple-preview:init-http-server ()
-  "Start http server at PORT to serve preview file via http."
-  (when (not maple-preview:http-server)
-    (when (process-status "maple-preview")
-      (delete-process "maple-preview"))
-    (cl-letf (((symbol-function 'httpd-log) 'ignore))
-      (setq httpd-root maple-preview:home-path
-            httpd-host maple-preview:host
-            httpd-port maple-preview:port)
-      (setq maple-preview:http-server
-            (make-network-process
-             :name     "maple-preview"
-             :service  httpd-port
-             :server   t
-             :host     httpd-host
-             :family   httpd-ip-family
-             :filter   'httpd--filter
-             :filter-multibyte nil
-             :coding   'binary
-             :log      'httpd--log))
-      (defservlet preview text/html (_path)
-        (insert (maple-preview:preview-template))))))
+(defun maple-preview:websocket-text(text)
+  "Decode websocket TEXT,ws-web-socket-frame utf-8 is unsupported."
+  (websocket-encode-frame
+   (make-websocket-frame :opcode 'text
+                         :payload (encode-coding-string
+                                   text 'raw-text)
+                         :completep t)
+   nil))
+
+(defun maple-preview:init-server()
+  "Init server."
+  (unless maple-preview:server
+    (setq maple-preview:server
+          (ws-start
+           (lambda (request)
+             (with-slots (process headers) request
+               (if (ws-web-socket-connect request 'maple-preview:send-to-server)
+                   (prog1 :keep-alive (setq maple-preview:websocket process))
+                 (let ((path (substring (cdr (assoc :GET headers)) 1)))
+                   (catch 'close-connection
+                     (cond ((string= path "favicon.ico")
+                            (ws-send-404 process))
+                           ((string= path "preview")
+                            (ws-response-header process 200 '("Content-type" . "text/html"))
+                            (ws-send process (maple-preview:template)))
+                           ((string-prefix-p "preview/" path)
+                            (ws-send-file
+                             process
+                             (expand-file-name (string-trim-left path "preview/") maple-preview:home-path)
+                             (maple-preview:mime-type path)))
+                           ((ws-in-directory-p default-directory path)
+                            (ws-send-file
+                             process
+                             (expand-file-name path default-directory)
+                             (maple-preview:mime-type path)))
+                           (t (ws-send-404 process))))))))
+           maple-preview:port nil
+           :host maple-preview:host
+           ;; name is unvalid
+           :name "maple-preview-server"))))
+
+(defun maple-preview:listen()
+  "Get listen address."
+  (unless maple-preview:server
+    (error "There is no listen address"))
+  (format "%s:%s" maple-preview:host
+          (if (booleanp maple-preview:port)
+              (process-contact (ws-process maple-preview:server) :service t)
+            maple-preview:port)))
 
 (defun maple-preview:open-browser ()
   "Open browser."
   (browse-url
-   (format "http://%s:%s/preview" maple-preview:host maple-preview:port)))
+   (format "http://%s/preview" (maple-preview:listen))))
 
 (defun maple-preview:init ()
   "Preview init."
-  (maple-preview:init-websocket)
-  (maple-preview:init-http-server)
+  (maple-preview:init-server)
   (when maple-preview:browser-open (maple-preview:open-browser))
   (when maple-preview:auto-update
     (add-hook 'post-self-insert-hook #'maple-preview:send-to-server)
@@ -261,18 +265,11 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
 
 (defun maple-preview:finalize ()
   "Preview close."
-  (when maple-preview:websocket-server
-    (websocket-server-close maple-preview:websocket-server)
-    (setq maple-preview:websocket-server nil))
-  (when maple-preview:http-server
-    (when (process-status "maple-preview")
-      (delete-process "maple-preview"))
-    ;; close connection
-    (dolist (i (process-list))
-      (when (and (string-prefix-p "maple-preview" (process-name i))
-                 (equal (process-type i) 'network))
-        (delete-process i)))
-    (setq maple-preview:http-server nil))
+  (when maple-preview:server
+    (ws-stop maple-preview:server)
+    (setq maple-preview:server nil))
+  (when maple-preview:websocket
+    (setq maple-preview:websocket nil))
   (remove-hook 'post-self-insert-hook 'maple-preview:send-to-server)
   (remove-hook 'after-save-hook 'maple-preview:send-to-server))
 
@@ -285,7 +282,7 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
 
 ;;;###autoload
 (define-minor-mode maple-preview-mode
-  "Maple preview mode"
+  "Maple preview mode."
   :group      'maple-preview
   :init-value nil
   :global     t
