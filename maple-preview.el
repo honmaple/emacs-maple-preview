@@ -54,6 +54,11 @@
   :type 'integer
   :group 'maple-preview)
 
+(defcustom maple-preview:delay 0.1
+  "Delay time when auto update preview."
+  :type 'float
+  :group 'maple-preview)
+
 (defcustom maple-preview:browser-open t
   "Auto open browser."
   :type 'boolean
@@ -94,7 +99,7 @@
   "Hook for user specified auto preview instance.
 
 This hook run within the procedure of `maple-preview:init' when
-customized variable `maple-preview:auto' was non-nil.
+customized variable `maple-preview:auto-update' was non-nil.
 
 The internal auto-preview type transferred
 `maple-preview:send-to-server' to the `post-self-insert-hook',
@@ -111,6 +116,7 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
 (defvar maple-preview:server nil
   "`maple-preview' http server.")
 (defvar maple-preview:websocket nil)
+(defvar maple-preview:sending nil)
 
 (defvar maple-preview:home-path (file-name-directory load-file-name))
 (defvar maple-preview:index-file (concat maple-preview:home-path "index.html"))
@@ -163,8 +169,10 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
   "Get file html content."
   (let ((file-name buffer-file-truename))
     (concat (cond ((memq major-mode '(org-mode markdown-mode))
-                   (require 'ox-html)
-                   (let ((content (org-export-as 'html)))
+                   (unless (featurep 'ox-html) (require 'ox-html))
+                   (let* ((org-html-postamble nil)
+                          (content (org-export-as 'html)))
+                     (ignore org-html-postamble)
                      (with-temp-buffer
                        (insert content)
                        (buffer-string))))
@@ -179,7 +187,7 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
   "Get file markdown content."
   (let ((file-name buffer-file-truename))
     (cond ((eq major-mode 'org-mode)
-           (require 'ox-md)
+           (unless (featurep 'ox-md) (require 'ox-md))
            (org-export-as 'md))
           ((memq major-mode '(web-mode html-mode))
            (concat (with-temp-buffer
@@ -187,6 +195,18 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
                      (buffer-string))
                    "<!-- iframe -->"))
           (t (buffer-substring-no-properties (point-min) (point-max))))))
+
+(defun maple-preview:send-content()
+  "Send content to server with delay time."
+  (if (> maple-preview:delay 0)
+      (unless maple-preview:sending
+        (setq maple-preview:sending t)
+        (run-with-idle-timer
+         maple-preview:delay nil
+         (lambda()
+           (maple-preview:send-to-server)
+           (setq maple-preview:sending nil))))
+    (maple-preview:send-to-server)))
 
 (defun maple-preview:send-to-server (&optional ws _string)
   "Send STRING the `maple-preview' preview to WS clients."
@@ -259,9 +279,9 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
   (maple-preview:init-server)
   (when maple-preview:browser-open (maple-preview:open-browser))
   (when maple-preview:auto-update
-    (add-hook 'post-self-insert-hook #'maple-preview:send-to-server)
+    (add-hook 'post-self-insert-hook #'maple-preview:send-content)
     (run-hooks 'maple-preview:auto-hook))
-  (add-hook 'after-save-hook #'maple-preview:send-to-server))
+  (add-hook 'after-save-hook #'maple-preview:send-content))
 
 (defun maple-preview:finalize ()
   "Preview close."
@@ -270,8 +290,8 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
     (setq maple-preview:server nil))
   (when maple-preview:websocket
     (setq maple-preview:websocket nil))
-  (remove-hook 'post-self-insert-hook 'maple-preview:send-to-server)
-  (remove-hook 'after-save-hook 'maple-preview:send-to-server))
+  (remove-hook 'post-self-insert-hook 'maple-preview:send-content)
+  (remove-hook 'after-save-hook 'maple-preview:send-content))
 
 ;;;###autoload
 (defun maple-preview-cleanup ()

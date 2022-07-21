@@ -59,13 +59,16 @@
                frameDoc.writeln(event.data);
                frameDoc.close();
 
-               var position = $("iframe").contents().find("#position-percentage").html();
+               var iframeContent = $("iframe").contents();
+               var position = iframeContent.find("#position-percentage").html();
                if (position) {
-                   $("iframe").contents().scrollTop(scroll = $("iframe").contents().height() * (position / 100));
+                   iframeContent.scrollTop(scroll = iframeContent.height() * (position / 100));
+                   /* iframe.contentWindow.scrollTo({top:iframeContent.height() * (position / 100), behavior: 'smooth'}); */
+                   /* iframe.animate({ scrollTop: iframeContent.height() * (position / 100)}, 300); */
                }
                $("body").css("margin","0")
                $("body").css("padding","0")
-           }else {
+           } else {
                $("#preview").html(marked(event.data))
                if (extension.mermaid) {
                    mermaid.init();
