@@ -32,6 +32,8 @@
      (setq maple-preview:host "localhost")
      ;; Preview http port, t means use unused port
      (setq maple-preview:port t)
+     ;; Delay preview when auto update is non-nil
+     (setq maple-preview:delay 0.1)
      ;; Auto open browser
      (setq maple-preview:browser-open t)
      ;; Auto preview when insert

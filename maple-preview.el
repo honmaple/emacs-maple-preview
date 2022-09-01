@@ -1,6 +1,6 @@
 ;;; maple-preview.el ---  preview text file.	-*- lexical-binding: t -*-
 
-;; Copyright (C) 2015-2019 lin.jiang
+;; Copyright (C) 2015-2022 lin.jiang
 
 ;; Author: lin.jiang <mail@honmaple.com>
 ;; Version: 0.1.1
