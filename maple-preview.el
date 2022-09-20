@@ -167,34 +167,22 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
 
 (defun maple-preview:html-content ()
   "Get file html content."
-  (let ((file-name buffer-file-truename))
-    (concat (cond ((memq major-mode '(org-mode markdown-mode))
-                   (unless (featurep 'ox-html) (require 'ox-html))
-                   (let* ((org-html-postamble nil)
-                          (content (org-export-as 'html)))
-                     (ignore org-html-postamble)
-                     (with-temp-buffer
-                       (insert content)
-                       (buffer-string))))
-                  ((memq major-mode '(web-mode html-mode))
-                   (with-temp-buffer
-                     (insert-file-contents file-name)
-                     (buffer-string)))
-                  (t (buffer-substring-no-properties (point-min) (point-max))))
-            "<!-- iframe -->")))
+  (concat (cond ((memq major-mode '(org-mode markdown-mode))
+                 (unless (featurep 'ox-html) (require 'ox-html))
+                 (let ((org-html-postamble nil))
+                   (ignore org-html-postamble)
+                   (org-export-as 'html)))
+                (t (buffer-substring-no-properties (point-min) (point-max))))
+          "<!-- iframe -->"))
 
 (defun maple-preview:markdown-content ()
   "Get file markdown content."
-  (let ((file-name buffer-file-truename))
-    (cond ((eq major-mode 'org-mode)
-           (unless (featurep 'ox-md) (require 'ox-md))
-           (org-export-as 'md))
-          ((memq major-mode '(web-mode html-mode))
-           (concat (with-temp-buffer
-                     (insert-file-contents file-name)
-                     (buffer-string))
-                   "<!-- iframe -->"))
-          (t (buffer-substring-no-properties (point-min) (point-max))))))
+  (cond ((eq major-mode 'org-mode)
+         (unless (featurep 'ox-md) (require 'ox-md))
+         (org-export-as 'md))
+        ((memq major-mode '(web-mode html-mode))
+         (concat (buffer-substring-no-properties (point-min) (point-max)) "<!-- iframe -->"))
+        (t (buffer-substring-no-properties (point-min) (point-max)))))
 
 (defun maple-preview:send-content()
   "Send content to server with delay time."
@@ -285,6 +273,7 @@ It's useful to remove all dirty hacking with `maple-preview:auto-hook'."
 
 (defun maple-preview:finalize ()
   "Preview close."
+  (setq maple-preview:sending nil)
   (when maple-preview:server
     (ws-stop maple-preview:server)
     (setq maple-preview:server nil))

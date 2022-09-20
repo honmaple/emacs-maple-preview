@@ -73,7 +73,6 @@
    #+end_src
 
    Then use src with mermaid flag
-   #+begin_example
    #+begin_src mermaid
     graph TD
     A[nginx]
@@ -82,4 +81,15 @@
     A -->|write| B
     A -->|send| C
    #+end_src
-   #+end_example
+** Not available in windows?
+   Maybe it's because of the newline encoding problem in Windows
+   #+begin_src elisp
+     (defun custom-websocket-text (text)
+       (if (eq system-type 'windows-nt)
+           (replace-regexp-in-string "\n" "^M" text)
+         text))
+
+     (advice-add 'maple-preview:websocket-text :filter-return #'custom-websocket-text)
+   #+end_src
+
+   =^M= is =C-q C-m=
