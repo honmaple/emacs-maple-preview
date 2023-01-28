@@ -17,6 +17,10 @@
    #+END_SRC
 
    #+begin_src elisp
+     ;; These are dependent libraries
+     (use-package websocket)
+     (use-package web-server)
+
      (use-package maple-preview
        :ensure nil
        :commands (maple-preview-mode))
