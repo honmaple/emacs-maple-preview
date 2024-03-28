@@ -5,10 +5,29 @@
     <title>Text Preview</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {{ css }}
+    <style>
+     .markdown-body {
+         box-sizing: border-box;
+         min-width: 200px;
+         max-width: 980px;
+         margin: 0 auto;
+         padding: 45px;
+     }
+
+     @media (max-width: 767px) {
+         .markdown-body {
+             padding: 15px;
+         }
+     }
+
+     pre code.hljs {
+         padding: 0;
+     }
+    </style>
   </head>
   <body>
     <div class="container">
-      <div id="preview">Text Preview</div>
+      <div id="preview" class="markdown-body">Text Preview</div>
     </div>
   </body>
   {{ js }}
@@ -17,22 +36,29 @@
        var extension = {
            mermaid: typeof extension !== "undefined" ? extension.mermaid: false
        }
-       var renderer = new marked.Renderer()
-       renderer.defaultCode = renderer.code
-       renderer.code = function (code, language, escaped) {
-           if ((language || "").match(/^mermaid/)) {
-               extension.mermaid = true;
-               return '<div class="mermaid">' + code + '</div>';
-           }
-           return this.defaultCode(code, language, escaped)
-       };
 
-       marked.setOptions({
-           renderer: renderer,
-           highlight: function(code) {
+       const highlight = markedHighlight.markedHighlight({
+           langPrefix: "hljs language-",
+           highlight(code, lang, info) {
+               if ((lang || "").match(/^mermaid/)) {
+                   return code;
+               }
                return hljs.highlightAuto(code).value;
            }
-       })
+       });
+       const renderer = highlight.renderer;
+
+       highlight.renderer = {
+           code(code, lang, escaped) {
+               if ((lang || "").match(/^mermaid/)) {
+                   extension.mermaid = true;
+                   return '<div class="mermaid">' + code + '</div>';
+               }
+               return renderer.code(code, lang, escaped);
+           }
+       };
+
+       marked.use(highlight);
 
        var ws = new WebSocket('ws://{{ websocket }}');
        ws.onopen = function () {
@@ -69,7 +95,7 @@
                $("body").css("margin","0")
                $("body").css("padding","0")
            } else {
-               $("#preview").html(marked(event.data))
+               $("#preview").html(marked.parse(event.data))
                if (extension.mermaid) {
                    mermaid.init();
                }

@@ -54,6 +54,21 @@
                    </style>" t)
    #+end_src
 
+* Static Files
+  - css
+    #+begin_example
+    wget https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown.min.css -O static/css/markdown.css
+    wget https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css -O static/css/highlight.css
+    #+end_example
+  - js
+    #+begin_example
+    wget https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js -O static/js/jquery.min.js
+    wget https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js -O static/js/marked.min.js
+    wget https://cdnjs.cloudflare.com/ajax/libs/marked-highlight/2.1.1/index.umd.min.js -O static/js/marked-highlight.min.js
+    wget https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js -O static/js/highlight.min.js
+    wget https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js -O static/js/mermaid.min.js
+    #+end_example
+
 * FAQ
 ** How to preview Latex within org-mode?
    #+begin_src elisp

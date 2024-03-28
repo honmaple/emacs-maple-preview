@@ -1,6 +1,6 @@
 ;;; maple-preview.el ---  preview text file.	-*- lexical-binding: t -*-
 
-;; Copyright (C) 2015-2022 lin.jiang
+;; Copyright (C) 2015-2024 lin.jiang
 
 ;; Author: lin.jiang <mail@honmaple.com>
 ;; Version: 0.1.1
@@ -81,7 +81,8 @@
   :group 'maple-preview)
 
 (defcustom maple-preview:css-file
-  '("/preview/static/css/markdown.css")
+  '("/preview/static/css/markdown.css"
+    "/preview/static/css/highlight.css")
   "Custom preview css style."
   :type 'list
   :group 'maple-preview)
@@ -89,8 +90,9 @@
 (defcustom maple-preview:js-file
   '("/preview/static/js/jquery.min.js"
     "/preview/static/js/marked.min.js"
+    "/preview/static/js/marked-highlight.min.js"
     "/preview/static/js/highlight.min.js"
-    "/preview/static/js/mermaid.js")
+    "/preview/static/js/mermaid.min.js")
   "Custom preview js script."
   :type 'list
   :group 'maple-preview)
