@@ -11,7 +11,7 @@
          min-width: 200px;
          max-width: 980px;
          margin: 0 auto;
-         padding: 45px;
+         padding: 20px;
      }
 
      @media (max-width: 767px) {
@@ -38,6 +38,7 @@
        }
 
        const highlight = markedHighlight.markedHighlight({
+           async: false,
            langPrefix: "hljs language-",
            highlight(code, lang, info) {
                if ((lang || "").match(/^mermaid/)) {
