@@ -2,13 +2,13 @@
   markdown, org-mode or html realtime preview on Emacs
 
 ** screenshot
-   [[https://github.com/honmaple/emacs-maple-preview/blob/master/screenshot/preview.gif]]
+   [[./screenshot/preview.gif]]
 
 ** quickstart
    #+begin_src elisp
-     (use-package maple-preview
-       :quelpa (:fetcher github :repo "honmaple/emacs-maple-preview" :files ("*.el" "index.html" "static"))
-       :commands (maple-preview-mode))
+   (use-package maple-preview
+     :quelpa (:fetcher github :repo "honmaple/emacs-maple-preview" :files ("*.el" "index.html" "static"))
+     :commands (maple-preview-mode))
    #+end_src
 
    Or alternatively, you can download the repository and install manually by doing:
@@ -17,44 +17,44 @@
    #+END_SRC
 
    #+begin_src elisp
-     ;; These are dependent libraries
-     (use-package websocket)
-     (use-package web-server)
+   ;; These are dependent libraries
+   (use-package websocket)
+   (use-package web-server)
 
-     (use-package maple-preview
-       :ensure nil
-       :commands (maple-preview-mode))
+   (use-package maple-preview
+     :ensure nil
+     :commands (maple-preview-mode))
    #+end_src
 
 ** customize
    #+begin_src elisp
-     ;; only enable preview within some special modes
-     (setq maple-preview:allow-modes '(org-mode markdown-mode html-mode web-mode))
-     ;; How to preview text, export to markdown or html
-     (setq maple-preview:text-content '((t . maple-preview:markdown-content)))
-     ;; Preview http host
-     (setq maple-preview:host "localhost")
-     ;; Preview http port, t means use unused port
-     (setq maple-preview:port t)
-     ;; Delay preview when auto update is non-nil
-     (setq maple-preview:delay 0.1)
-     ;; Auto open browser
-     (setq maple-preview:browser-open t)
-     ;; Auto preview when insert
-     (setq maple-preview:auto-update t)
-     ;; Auto scroll when preview
-     (setq maple-preview:auto-scroll t)
-     ;; custom css or js file
-     (add-to-list 'maple-preview:js-file "https://cdn.bootcss.com/mathjax/2.7.6/MathJax.js" t)
-     (add-to-list 'maple-preview:css-file
-                  "<style type=\"text/css\">
-                     body {
-                         max-width: 800px;
-                     }
-                   </style>" t)
+   ;; Preview http host
+   (setq maple-preview-host "localhost")
+   ;; Preview http port, t means use unused port
+   (setq maple-preview-port t)
+   ;; Delay preview when auto update is non-nil
+   (setq maple-preview-delay 0.1)
+   ;; Auto preview when insert
+   (setq maple-preview-auto-update t)
+   ;; Auto scroll when preview
+   (setq maple-preview-auto-scroll t)
+   ;; Auto open browser
+   (setq maple-preview-auto-browser t)
+   ;; only enable preview within some special modes
+   (setq maple-preview-render-modes '(org-mode markdown-mode html-mode web-mode))
+   ;; How to preview text, export to markdown or html
+   (setq maple-preview-render-alist '((t . maple-preview-markdown-content)))
+   ;; custom css or js file
+   (add-to-list 'maple-preview-styles
+                "<style type=\"text/css\">
+                   body {
+                       max-width: 800px;
+                   }
+                 </style>" t)
+   (add-to-list 'maple-preview-scripts "https://cdn.bootcss.com/mathjax/2.7.6/MathJax.js" t)
    #+end_src
 
-* Static Files
+* Static Files(Already built-in)
   - css
     #+begin_example
     wget https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown.min.css -O static/css/markdown.css
@@ -72,8 +72,8 @@
 * FAQ
 ** How to preview Latex within org-mode?
    #+begin_src elisp
-     (setq maple-preview:text-content '((org-mode . maple-preview:html-content)
-                                        (t . maple-preview:markdown-content)))
+   (setq maple-preview-render-alist '((org-mode . maple-preview-html-content)
+                                      (t . maple-preview-markdown-content)))
    #+end_src
    Then *maple-preview* will export org-mode as html with mathjax.js, if you want to custom beautiful css, use
 
@@ -82,12 +82,12 @@
    #+end_example
 ** How to preview mermaid within org-mode?
    #+begin_src elisp
-     (defun maple/org-md-example-block (example-block _contents info)
-       (format "```%s\n%s\n```"
-               (org-element-property :language example-block)
-               (org-remove-indentation
-                (org-export-format-code-default example-block info))))
-     (advice-add 'org-md-example-block :override 'maple/org-md-example-block)
+   (defun maple/org-md-example-block (example-block _contents info)
+     (format "```%s\n%s\n```"
+             (org-element-property :language example-block)
+             (org-remove-indentation
+              (org-export-format-code-default example-block info))))
+   (advice-add 'org-md-example-block :override 'maple/org-md-example-block)
 
    #+end_src
 
@@ -103,12 +103,12 @@
 ** Not available in windows?
    Maybe it's because of the newline encoding problem in Windows
    #+begin_src elisp
-     (defun custom-websocket-text (text)
-       (if (eq system-type 'windows-nt)
-           (replace-regexp-in-string "\n" "^M" text)
-         text))
+   (defun custom-websocket-text (text)
+     (if (eq system-type 'windows-nt)
+         (replace-regexp-in-string "\n" "^M" text)
+       text))
 
-     (advice-add 'maple-preview:websocket-text :filter-return #'custom-websocket-text)
+   (advice-add 'maple-preview-websocket-text :filter-return #'custom-websocket-text)
    #+end_src
 
    =^M= is =C-q C-m=
