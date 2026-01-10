@@ -70,7 +70,7 @@
     #+end_example
 
 * FAQ
-** How to preview Latex within org-mode?
+** How to preview mathematical expressions within org-mode?
    #+begin_src elisp
    (setq maple-preview-render-alist '((org-mode . maple-preview-html-content)
                                       (t . maple-preview-markdown-content)))
@@ -80,6 +80,21 @@
    #+begin_example
      #+HTML_HEAD: <link rel="stylesheet" type="text/css" href="custom.css" />
    #+end_example
+
+   or use =katex=
+   #+begin_src elisp
+   (add-to-list 'maple-preview-styles "https://cdn.jsdelivr.net/npm/katex@0.16.27/dist/katex.min.css" t)
+   (add-to-list 'maple-preview-scripts "https://cdn.jsdelivr.net/npm/katex@0.16.27/dist/katex.min.js" t)
+   (add-to-list 'maple-preview-scripts "https://cdn.jsdelivr.net/npm/marked-katex-extension@5.1.6/lib/index.umd.min.js" t)
+   (add-to-list 'maple-preview-scripts
+                "<script>
+                 const markedKatexOptions = {
+                   throwOnError: false
+                 };
+                 marked.use(markedKatex(markedKatexOptions));
+                 </script>" t)
+   #+end_src
+
 ** How to preview mermaid within org-mode?
    #+begin_src elisp
    (defun maple/org-md-example-block (example-block _contents info)
@@ -88,7 +103,6 @@
              (org-remove-indentation
               (org-export-format-code-default example-block info))))
    (advice-add 'org-md-example-block :override 'maple/org-md-example-block)
-
    #+end_src
 
    Then use src with mermaid flag
