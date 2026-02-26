@@ -61,7 +61,9 @@
 
        marked.use(highlight);
 
-       var ws = new WebSocket('ws://{{ websocket }}');
+       var wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+       var ws = new WebSocket(wsProtocol + '//{{ websocket }}');
+
        ws.onopen = function () {
            ws.send("I'm connected");
        };

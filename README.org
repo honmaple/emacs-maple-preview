@@ -30,6 +30,9 @@
    #+begin_src elisp
    ;; Preview http host
    (setq maple-preview-host "localhost")
+   ;; Public domain used in websocket URL (for reverse proxy).
+   ;; e.g. "preview.example.com" or "preview.example.com:443"
+   (setq maple-preview-domain nil)
    ;; Preview http port, t means use unused port
    (setq maple-preview-port t)
    ;; Delay preview when auto update is non-nil

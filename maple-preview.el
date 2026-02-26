@@ -40,8 +40,16 @@
   :prefix "maple-preview-")
 
 (defcustom maple-preview-host "127.0.0.1"
-  "Preview http host."
+  "Preview http host for server binding."
   :type 'string
+  :group 'maple-preview)
+
+(defcustom maple-preview-domain nil
+  "Public domain used in WebSocket URL.
+If nil, use `maple-preview-host'.
+If non-nil, this value is used as-is (for example \"preview.example.com\"
+or \"preview.example.com:443\"), which is useful behind reverse proxy."
+  :type '(choice (const nil) string)
   :group 'maple-preview)
 
 (defcustom maple-preview-port t
@@ -251,18 +259,22 @@ It's useful to remove all dirty hacking with `maple-preview-auto-hook'."
            :name "maple-preview-server"))))
 
 (defun maple-preview-listen()
-  "Get listen address."
+  "Get listen address for WebSocket URL."
   (unless maple-preview-server
     (error "There is no listen address"))
-  (format "%s:%s" maple-preview-host
-          (if (booleanp maple-preview-port)
-              (process-contact (ws-process maple-preview-server) :service t)
-            maple-preview-port)))
+  (let ((host (or maple-preview-domain maple-preview-host))
+        (port (if (booleanp maple-preview-port)
+                  (process-contact (ws-process maple-preview-server) :service t)
+                maple-preview-port)))
+    (if maple-preview-domain
+        ;; Public host is typically fronted by reverse proxy; avoid exposing local port.
+        (format "%s/preview" host)
+      (format "%s:%s/preview" host port))))
 
 (defun maple-preview-open-browser ()
   "Open browser."
   (browse-url
-   (format "http://%s/preview" (maple-preview-listen))))
+   (format "http://%s" (maple-preview-listen))))
 
 (defun maple-preview-init ()
   "Preview init."
@@ -300,6 +312,7 @@ It's useful to remove all dirty hacking with `maple-preview-auto-hook'."
   (if maple-preview-mode (maple-preview-init) (maple-preview-finalize)))
 
 (define-obsolete-variable-alias 'maple-preview:host 'maple-preview-host "2025-12-23")
+(define-obsolete-variable-alias 'maple-preview:domain 'maple-preview-domain "2026-02-26")
 (define-obsolete-variable-alias 'maple-preview:port 'maple-preview-port "2025-12-23")
 (define-obsolete-variable-alias 'maple-preview:delay 'maple-preview-delay "2025-12-23")
 (define-obsolete-variable-alias 'maple-preview:browser-open 'maple-preview-auto-browser "2025-12-23")
